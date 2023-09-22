@@ -24,7 +24,19 @@ services:
     volumes:
       - redis-hackathon:/data
 
+  blob:
+    image: ghcr.io/tus1688/go-blob-storage:main
+    container_name: blob
+    restart: always
+    environment:
+      AUTHORIZATION_HEADER: ${GO_BLOB_AUTHORIZATION}
+    ports:
+      - "5000:5000"
+    volumes:
+      - blob-hackathon:/usr/share/nginx/html
+
 volumes:
   mysql-hackathon:
     external: true
   redis-hackathon:
+  blob-hackathon:

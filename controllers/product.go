@@ -112,3 +112,31 @@ func DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 }
+
+func CreateProductImage(w http.ResponseWriter, r *http.Request) {
+	file, m, err := r.FormFile("file")
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	// validate image by checking extension of the file (jpg, jpeg, png only)
+	if m.Filename[len(m.Filename)-3:] != "jpg" && m.Filename[len(m.Filename)-4:] != "jpeg" && m.Filename[len(m.Filename)-3:] != "png" {
+		render.HandleError([]string{"invalid image format"}, http.StatusBadRequest, w)
+		return
+	}
+
+	id := r.FormValue("id")
+	res, err := models.CreateProductImage(id, file, m)
+	if err != nil {
+		if strings.Contains(err.Error(), "uuid_to_bin") {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		render.HandleError([]string{err.Error()}, http.StatusInternalServerError, w)
+		return
+	}
+
+	err = render.JSON(w, http.StatusCreated, res)
+}

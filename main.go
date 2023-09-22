@@ -8,6 +8,7 @@ import (
 	"github.com/Tus1688/kim-hackathon-2023-api/controllers"
 	"github.com/Tus1688/kim-hackathon-2023-api/database"
 	"github.com/Tus1688/kim-hackathon-2023-api/middlewares"
+	"github.com/Tus1688/kim-hackathon-2023-api/models"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
@@ -30,6 +31,9 @@ func main() {
 		log.Fatal("unable to initialize jwt key", err)
 	}
 	log.Print("successfully initialized jwt key")
+
+	models.InitializeGoBlobBaseUrl()
+	models.InitializeGoBlobAuthorization()
 
 	err = database.InitAdmin()
 	if err != nil {
@@ -99,6 +103,7 @@ func initRouter() *chi.Mux {
 					r.Post("/", controllers.CreateProduct)
 					r.Patch("/", controllers.ModifyProduct)
 					r.Delete("/", controllers.DeleteProduct)
+					r.Post("/image", controllers.CreateProductImage)
 				},
 			)
 

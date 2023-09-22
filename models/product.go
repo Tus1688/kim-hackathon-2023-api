@@ -1,7 +1,12 @@
 package models
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
+	"mime/multipart"
+	"net/http"
 
 	"github.com/Tus1688/kim-hackathon-2023-api/database"
 )
@@ -29,6 +34,10 @@ type ModifyProduct struct {
 	Description string  `json:"description" binding:"required"`
 	BusinessId  string  `json:"business_id" binding:"required"`
 	Price       float64 `json:"price" binding:"required"`
+}
+
+type GoBlobResponse struct {
+	Filename string `json:"filename"`
 }
 
 func (c *CreateProduct) Create() error {
@@ -104,4 +113,71 @@ func DeleteProduct(id string) error {
 		return fmt.Errorf("not found")
 	}
 	return nil
+}
+
+func CreateProductImage(productId string, image multipart.File, header *multipart.FileHeader) (GoBlobResponse, error) {
+	// check if product exists
+	_, err := database.MysqlInstance.Exec(
+		"SELECT id FROM products WHERE id = UUID_TO_BIN(?)", productId,
+	)
+	if err != nil {
+		return GoBlobResponse{}, err
+	}
+
+	//	Create a POST request to the image server
+	url := goBlobBaseUrl + "/file"
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		return GoBlobResponse{}, err
+	}
+
+	// Set the content type to multipart/form-data
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", header.Filename)
+	if err != nil {
+		return GoBlobResponse{}, err
+	}
+	_, err = io.Copy(part, image)
+	if err != nil {
+		return GoBlobResponse{}, err
+	}
+	err = writer.Close()
+	if err != nil {
+		return GoBlobResponse{}, err
+	}
+
+	//	pass file name
+	req.Header.Set("File-Name", header.Filename)
+	req.Header.Set("Authorization", goBlobAuthorization)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Body = io.NopCloser(body)
+
+	//	Execute the request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return GoBlobResponse{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return GoBlobResponse{}, fmt.Errorf("image server error")
+	}
+
+	//	Extract filename
+	//  {filename: target.jpg}
+	var res GoBlobResponse
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return GoBlobResponse{}, err
+	}
+
+	//	Insert into database
+	_, err = database.MysqlInstance.Exec(
+		"INSERT INTO product_images (product_refer, file_name) VALUES (UUID_TO_BIN(?), ?)", productId, res.Filename,
+	)
+	if err != nil {
+		return GoBlobResponse{}, err
+	}
+	return res, nil
 }

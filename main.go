@@ -90,6 +90,17 @@ func initRouter() *chi.Mux {
 					r.Delete("/", controllers.DeleteBusiness)
 				},
 			)
+
+			r.Route(
+				"/product", func(r chi.Router) {
+					r.Use(middlewares.EnforceAuthentication(nil, 3))
+
+					r.Get("/", controllers.GetProduct)
+					r.Post("/", controllers.CreateProduct)
+					r.Patch("/", controllers.ModifyProduct)
+					r.Delete("/", controllers.DeleteProduct)
+				},
+			)
 		},
 	)
 

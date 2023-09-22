@@ -7,7 +7,7 @@ import (
 	"github.com/Tus1688/kim-hackathon-2023-api/authutil"
 	"github.com/Tus1688/kim-hackathon-2023-api/controllers"
 	"github.com/Tus1688/kim-hackathon-2023-api/database"
-	"github.com/Tus1688/kim-hackathon-2023-api/middlwwares"
+	"github.com/Tus1688/kim-hackathon-2023-api/middlewares"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
@@ -69,7 +69,7 @@ func initRouter() *chi.Mux {
 					// protected routes for admin
 					r.Group(
 						func(r chi.Router) {
-							r.Use(middlwwares.EnforceAuthentication([]string{"admin"}, 3))
+							r.Use(middlewares.EnforceAuthentication([]string{"admin"}, 3))
 
 							r.Get("/user", controllers.GetUser)
 							r.Post("/user", controllers.CreateUser)
@@ -77,6 +77,17 @@ func initRouter() *chi.Mux {
 							r.Delete("/user", controllers.DeleteUser)
 						},
 					)
+				},
+			)
+
+			r.Route(
+				"/business", func(r chi.Router) {
+					r.Use(middlewares.EnforceAuthentication(nil, 3))
+
+					r.Get("/", controllers.GetBusiness)
+					r.Post("/", controllers.CreateBusiness)
+					r.Patch("/", controllers.ModifyBusiness)
+					r.Delete("/", controllers.DeleteBusiness)
 				},
 			)
 		},

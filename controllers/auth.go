@@ -119,7 +119,7 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if strings.Contains(err.Error(), "uuid") {
+		if strings.Contains(err.Error(), "uuid_to_bin") {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}

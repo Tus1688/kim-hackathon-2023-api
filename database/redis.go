@@ -7,7 +7,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-var redisInstance []*redis.Client
+var RedisInstance []*redis.Client
 
 func InitRedis() error {
 	for i := 0; i < 1; i++ {
@@ -26,7 +26,7 @@ func InitRedis() error {
 			return err
 		}
 
-		redisInstance = append(redisInstance, client)
+		RedisInstance = append(RedisInstance, client)
 	}
 	return nil
 }

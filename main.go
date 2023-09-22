@@ -101,6 +101,16 @@ func initRouter() *chi.Mux {
 					r.Delete("/", controllers.DeleteProduct)
 				},
 			)
+
+			r.Route(
+				"/order", func(r chi.Router) {
+					r.Use(middlewares.EnforceAuthentication(nil, 3))
+
+					r.Get("/", controllers.GetOrder)
+					r.Post("/", controllers.CreateOrder)
+					r.Patch("/", controllers.ModifyOrder)
+				},
+			)
 		},
 	)
 

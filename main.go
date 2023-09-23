@@ -71,6 +71,16 @@ func initRouter() *chi.Mux {
 			r.Use(middleware.Compress(5, "application/json"))
 
 			r.Route(
+				"/analytics", func(r chi.Router) {
+					r.Use(middlewares.EnforceAuthentication([]string{"admin"}, 3, false))
+
+					r.Get("/total-user", controllers.GetTotalUser)
+					r.Get("/total-sme", controllers.GetTotalSME)
+					r.Get("/total-awaiting approval", controllers.GetAwaitingApproval)
+				},
+			)
+
+			r.Route(
 				"/auth", func(r chi.Router) {
 					// unprotected routes
 					r.Group(

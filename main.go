@@ -86,7 +86,7 @@ func initRouter() *chi.Mux {
 
 			r.Route(
 				"/business", func(r chi.Router) {
-					r.Use(middlewares.EnforceAuthentication(nil, 3))
+					r.Use(middlewares.EnforceAuthentication([]string{"admin"}, 3))
 
 					r.Get("/", controllers.GetBusiness)
 					r.Post("/", controllers.CreateBusiness)
@@ -97,7 +97,7 @@ func initRouter() *chi.Mux {
 
 			r.Route(
 				"/product", func(r chi.Router) {
-					r.Use(middlewares.EnforceAuthentication(nil, 3))
+					r.Use(middlewares.EnforceAuthentication([]string{"admin"}, 3))
 
 					r.Get("/", controllers.GetProduct)
 					r.Post("/", controllers.CreateProduct)
@@ -110,7 +110,7 @@ func initRouter() *chi.Mux {
 
 			r.Route(
 				"/order", func(r chi.Router) {
-					r.Use(middlewares.EnforceAuthentication(nil, 3))
+					r.Use(middlewares.EnforceAuthentication([]string{"admin"}, 3))
 
 					r.Get("/", controllers.GetOrder)
 					r.Post("/", controllers.CreateOrder)

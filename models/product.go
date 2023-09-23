@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/Tus1688/kim-hackathon-2023-api/database"
+	"github.com/google/uuid"
 )
 
 type CreateProduct struct {
@@ -42,18 +43,25 @@ type GoBlobResponse struct {
 	Filename string `json:"filename"`
 }
 
-func (c *CreateProduct) Create() error {
+type CreateProductResponse struct {
+	Id string `json:"id"`
+}
+
+func (c *CreateProduct) Create() (CreateProductResponse, error) {
 	if c.Price <= 0 {
-		return fmt.Errorf("invalid input")
+		return CreateProductResponse{}, fmt.Errorf("invalid input")
 	}
+	id := uuid.New().String()
 	_, err := database.MysqlInstance.Exec(
-		"INSERT INTO products (name, description, business_refer, price) VALUES (?, ?, UUID_TO_BIN(?), ?)", c.Name,
-		c.Description, c.BusinessId, c.Price,
+		"INSERT INTO products (id, name, description, business_refer, price) VALUES (UUID_TO_BIN(?), ?, ?, UUID_TO_BIN(?), ?)",
+		id, c.Name, c.Description, c.BusinessId, c.Price,
 	)
 	if err != nil {
-		return err
+		return CreateProductResponse{}, err
 	}
-	return nil
+	return CreateProductResponse{
+		Id: id,
+	}, nil
 }
 
 func GetProduct(searchQuery string) ([]ProductResponse, error) {

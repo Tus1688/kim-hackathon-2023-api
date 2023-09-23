@@ -16,7 +16,7 @@ func CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := req.Create()
+	res, err := req.Create()
 	if err != nil {
 		if strings.Contains(err.Error(), "Duplicate") {
 			render.HandleError([]string{"product already exists"}, http.StatusConflict, w)
@@ -37,7 +37,10 @@ func CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
+	err = render.JSON(w, http.StatusCreated, res)
+	if err != nil {
+		render.HandleError([]string{err.Error()}, http.StatusInternalServerError, w)
+	}
 }
 
 func GetProduct(w http.ResponseWriter, r *http.Request) {

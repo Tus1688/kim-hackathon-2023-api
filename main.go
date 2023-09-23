@@ -77,6 +77,7 @@ func initRouter() *chi.Mux {
 						func(r chi.Router) {
 							r.Post("/login", controllers.Login)
 							r.Get("/refresh", controllers.GetRefreshToken)
+							r.Post("/logout", controllers.Logout)
 						},
 					)
 

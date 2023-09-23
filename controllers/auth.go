@@ -155,3 +155,26 @@ func ModifyUser(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 }
+
+func Logout(w http.ResponseWriter, r *http.Request) {
+	refToken, err := r.Cookie("refresh")
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	models.Logout(refToken.Value)
+	access := http.Cookie{
+		Name:   "access",
+		Value:  "",
+		Path:   "/api/v1",
+		Secure: true,
+	}
+	refresh := http.Cookie{
+		Name:  "refresh",
+		Value: "",
+	}
+	http.SetCookie(w, &access)
+	http.SetCookie(w, &refresh)
+
+	w.WriteHeader(http.StatusOK)
+}

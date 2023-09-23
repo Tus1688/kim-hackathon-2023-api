@@ -211,3 +211,7 @@ func (m *ModifyUser) Modify() error {
 	}
 	return nil
 }
+
+func Logout(refreshToken string) {
+	_ = database.RedisInstance[0].Del(context.Background(), refreshToken).Err()
+}

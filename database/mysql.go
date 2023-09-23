@@ -60,7 +60,7 @@ func InitAdmin() error {
 		return err
 	}
 	_, err = MysqlInstance.Exec(
-		`INSERT INTO users(username, hashed_password, is_admin) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE hashed_password = ?, is_admin = TRUE`,
+		`INSERT INTO users(username, hashed_password, is_admin, kim.users.is_user) VALUES (?, ?, ?, TRUE) ON DUPLICATE KEY UPDATE hashed_password = ?, is_admin = TRUE, is_user = TRUE`,
 		username, string(bytes), true, string(bytes),
 	)
 	if err != nil {

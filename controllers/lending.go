@@ -132,3 +132,69 @@ func PredictCreditScore(w http.ResponseWriter, r *http.Request) {
 		render.HandleError([]string{err.Error()}, http.StatusInternalServerError, w)
 	}
 }
+
+func ApproveLending(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err := models.ApproveLending(id)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			render.HandleError([]string{"lending proposal not found"}, http.StatusNotFound, w)
+			return
+		}
+		render.HandleError([]string{err.Error()}, http.StatusInternalServerError, w)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func RejectLending(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err := models.RejectLending(id)
+
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			render.HandleError([]string{"lending proposal not found"}, http.StatusNotFound, w)
+			return
+		}
+		render.HandleError([]string{err.Error()}, http.StatusInternalServerError, w)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func MakePayment(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	res, err := models.MakePayment(id)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			render.HandleError([]string{"lending proposal not found"}, http.StatusNotFound, w)
+			return
+		}
+		if strings.Contains(err.Error(), "uuid_to_bin") {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		render.HandleError([]string{err.Error()}, http.StatusInternalServerError, w)
+		return
+	}
+
+	err = render.JSON(w, http.StatusOK, res)
+	if err != nil {
+		render.HandleError([]string{err.Error()}, http.StatusInternalServerError, w)
+	}
+}

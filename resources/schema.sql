@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS lending(
     kk_url VARCHAR(255) NULL,
     ktp_url VARCHAR(255) NULL,
     is_approved BOOL DEFAULT FALSE,
+    is_rejected BOOL DEFAULT FALSE,
     status VARCHAR(32) NOT NULL,
     payment_token VARCHAR(255) NULL,
     payment_url VARCHAR(255) NULL,

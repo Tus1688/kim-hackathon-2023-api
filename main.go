@@ -1,13 +1,16 @@
 package main
 
 import (
+	"encoding/base64"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/Tus1688/kim-hackathon-2023-api/authutil"
 	"github.com/Tus1688/kim-hackathon-2023-api/controllers"
 	"github.com/Tus1688/kim-hackathon-2023-api/database"
 	"github.com/Tus1688/kim-hackathon-2023-api/middlewares"
+	"github.com/Tus1688/kim-hackathon-2023-api/midtrans"
 	"github.com/Tus1688/kim-hackathon-2023-api/models"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -41,6 +44,12 @@ func main() {
 		log.Fatal("unable to migrate admin account", err)
 	}
 	log.Print("successfully migrated admin account")
+
+	midtrans.ServerKey = os.Getenv("MIDTRANS_SERVER_KEY")
+	midtrans.ServerKeyEncoded = base64.StdEncoding.EncodeToString([]byte(os.Getenv("MIDTRANS_SERVER_KEY")))
+	midtrans.BaseUrlSnap = os.Getenv("MIDTRANS_BASE_URL_SNAP")
+	midtrans.BaseUrlCoreApi = os.Getenv("MIDTRANS_BASE_URL_CORE_API")
+	midtrans.BaseOrderId = os.Getenv("MIDTRANS_BASE_ORDER_ID")
 
 	log.Print("server running on port 3000")
 	r := initRouter()
@@ -146,6 +155,10 @@ func initRouter() *chi.Mux {
 
 							r.Get("/proposal", controllers.GetLendingProposalAdmin)
 							r.Get("/proposal-predict", controllers.PredictCreditScore)
+
+							r.Post("/proposal-approve", controllers.ApproveLending)
+							r.Post("/proposal-reject", controllers.RejectLending)
+							r.Post("/make-payment", controllers.MakePayment)
 						},
 					)
 				},

@@ -7,10 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
+	"time"
 
 	"github.com/Tus1688/kim-hackathon-2023-api/database"
+	"github.com/Tus1688/kim-hackathon-2023-api/midtrans"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -73,6 +76,8 @@ type LendingAdminResponse struct {
 	Status           string  `json:"status"`
 	PaymentToken     string  `json:"payment_token,omitempty"`
 	PaymentUrl       string  `json:"payment_url,omitempty"`
+	IsApproved       bool    `json:"is_approved"`
+	IsRejected       bool    `json:"is_rejected"`
 }
 
 type LendingPredictRequest struct {
@@ -199,6 +204,7 @@ func GetLendingAsUser(uid string) ([]LendingResponse, error) {
 		        l.status, COALESCE(l.payment_token, ''), COALESCE(l.payment_url, '')
 		FROM lending l
 		WHERE l.user_refer = UUID_TO_BIN(?)
+		ORDER BY l.created_at DESC
 	`, uid,
 	)
 	if err != nil {
@@ -255,9 +261,10 @@ func GetLendingAsAdmin() ([]LendingAdminResponse, error) {
 				   WHEN 1 THEN 'Memiliki'
 				   END AS home_ownership,
 				l.kk_url, l.ktp_url,
-		        l.status, COALESCE(l.payment_token, ''), COALESCE(l.payment_url, '')
+		        l.status, COALESCE(l.payment_token, ''), COALESCE(l.payment_url, ''), is_approved, is_rejected
 		FROM lending l
 		INNER JOIN users u ON l.user_refer = u.id
+		ORDER BY l.created_at DESC
 	`,
 	)
 	if err != nil {
@@ -272,6 +279,7 @@ func GetLendingAsAdmin() ([]LendingAdminResponse, error) {
 			&temp.Id, &temp.UserId, &temp.Username, &temp.Amount, &temp.InterestRate, &temp.Tenor, &temp.Age,
 			&temp.Gender, &temp.Income, &temp.LastEducation, &temp.MaritalStatus, &temp.NumberOfChildren,
 			&temp.HasHouse, &temp.KkUrl, &temp.KtpUrl, &temp.Status, &temp.PaymentToken, &temp.PaymentUrl,
+			&temp.IsApproved, &temp.IsRejected,
 		)
 		if err != nil {
 			return nil, err
@@ -319,5 +327,83 @@ func PredictCreditScore(id string) (LendingPredictResponse, error) {
 	if err != nil {
 		return LendingPredictResponse{}, err
 	}
+	return res, nil
+}
+
+func ApproveLending(id string) error {
+	res, err := database.MysqlInstance.Exec(
+		`UPDATE lending SET status = 'approved', is_approved = TRUE WHERE id = UUID_TO_BIN(?) AND is_rejected = FALSE`,
+		id,
+	)
+	if err != nil {
+		return err
+	}
+	if affected, _ := res.RowsAffected(); affected == 0 {
+		return fmt.Errorf("not found")
+	}
+	return nil
+}
+
+func RejectLending(id string) error {
+	res, err := database.MysqlInstance.Exec(
+		`UPDATE lending SET status = 'rejected', is_rejected = TRUE WHERE id = UUID_TO_BIN(?) AND is_approved = FALSE`,
+		id,
+	)
+	if err != nil {
+		return err
+	}
+	if affected, _ := res.RowsAffected(); affected == 0 {
+		return fmt.Errorf("not found")
+	}
+	return nil
+}
+
+func MakePayment(id string) (midtrans.ResponseSnap, error) {
+	var exits int
+	err := database.MysqlInstance.QueryRow(
+		`SELECT 1 FROM lending WHERE id = UUID_TO_BIN(?) AND is_approved = TRUE AND payment_token IS NULL`, id,
+	).Scan(&exits)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return midtrans.ResponseSnap{}, fmt.Errorf("lending not found")
+		}
+		return midtrans.ResponseSnap{}, err
+	}
+	if exits == 0 {
+		return midtrans.ResponseSnap{}, fmt.Errorf("lending not found")
+	}
+
+	var transDetails midtrans.TransactionDetails
+	transDetails.OrderId = midtrans.BaseOrderId + "-" + id
+	err = database.MysqlInstance.QueryRow("SELECT FLOOR(amount * (100 + interest_rate) / 100) FROM lending").Scan(&transDetails.GrossAmount)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return midtrans.ResponseSnap{}, fmt.Errorf("lending not found")
+		}
+		return midtrans.ResponseSnap{}, err
+	}
+
+	var snapReq midtrans.RequestSnap
+	snapReq.TransactionDetails = transDetails
+	snapReq.Expiry = midtrans.Expiry{
+		//	StartTime: will be time.Now() utc to string with format "2020-06-30 15:07:00 -0700"
+		StartTime: time.Now().Format("2006-01-02 15:04:05 -0700"),
+		Unit:      "day",
+		Duration:  30,
+	}
+
+	res, err := snapReq.CreatePayment()
+	if err != nil {
+		return midtrans.ResponseSnap{}, err
+	}
+	go func() {
+		_, err := database.MysqlInstance.Exec(
+			"UPDATE lending SET payment_token = ?, payment_url = ? WHERE id = UUID_TO_BIN(?)", res.Token,
+			res.RedirectUrl, id,
+		)
+		if err != nil {
+			log.Print(err)
+		}
+	}()
 	return res, nil
 }

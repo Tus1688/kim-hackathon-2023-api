@@ -7,6 +7,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"strings"
 
 	"github.com/Tus1688/kim-hackathon-2023-api/database"
 )
@@ -19,13 +20,14 @@ type CreateProduct struct {
 }
 
 type ProductResponse struct {
-	Id           string  `json:"id"`
-	Name         string  `json:"name"`
-	Description  string  `json:"description"`
-	BusinessId   string  `json:"business_id"`
-	BusinessName string  `json:"business_name"`
-	Price        float64 `json:"price"`
-	UpdatedOn    string  `json:"updated_on"`
+	Id           string   `json:"id"`
+	Name         string   `json:"name"`
+	Description  string   `json:"description"`
+	BusinessId   string   `json:"business_id"`
+	BusinessName string   `json:"business_name"`
+	Price        float64  `json:"price"`
+	Images       []string `json:"images"`
+	UpdatedOn    string   `json:"updated_on"`
 }
 
 type ModifyProduct struct {
@@ -56,16 +58,19 @@ func (c *CreateProduct) Create() error {
 
 func GetProduct(searchQuery string) ([]ProductResponse, error) {
 	query := `
-		SELECT BIN_TO_UUID(p.id), p.name, p.description, BIN_TO_UUID(p.business_refer), b.name, price, p.updated_at
-		FROM products p
-		INNER JOIN businesses b ON b.id = p.business_refer
-	`
+        SELECT BIN_TO_UUID(p.id), p.name, p.description, BIN_TO_UUID(p.business_refer), b.name, price, p.updated_at, COALESCE(GROUP_CONCAT(pi.file_name),'') AS images
+        FROM products p
+        INNER JOIN businesses b ON b.id = p.business_refer
+        LEFT JOIN product_images pi ON pi.product_refer = p.id
+    `
 	var args []interface{}
 
 	if searchQuery != "" {
 		query += " WHERE p.name LIKE ?"
 		args = append(args, "%"+searchQuery+"%")
 	}
+
+	query += " GROUP BY p.id"
 
 	rows, err := database.MysqlInstance.Query(query, args...)
 	if err != nil {
@@ -75,12 +80,15 @@ func GetProduct(searchQuery string) ([]ProductResponse, error) {
 	var res []ProductResponse
 	for rows.Next() {
 		var temp ProductResponse
+		var images string
 		err := rows.Scan(
 			&temp.Id, &temp.Name, &temp.Description, &temp.BusinessId, &temp.BusinessName, &temp.Price, &temp.UpdatedOn,
+			&images,
 		)
 		if err != nil {
 			return nil, err
 		}
+		temp.Images = strings.Split(images, ",")
 		res = append(res, temp)
 	}
 	return res, nil
@@ -180,4 +188,33 @@ func CreateProductImage(productId string, image multipart.File, header *multipar
 		return GoBlobResponse{}, err
 	}
 	return res, nil
+}
+
+func DeleteProductImage(filename string) error {
+	//	Delete from image server
+	url := goBlobBaseUrl + "/file/" + filename
+	req, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", goBlobAuthorization)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	// 404 considered ass successful as he image already gone
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
+		return fmt.Errorf("image server error")
+	}
+
+	//	Delete from database
+	_, err = database.MysqlInstance.Exec(
+		"DELETE FROM product_images WHERE file_name = ?", filename,
+	)
+	if err != nil {
+		return err
+	}
+	return nil
 }

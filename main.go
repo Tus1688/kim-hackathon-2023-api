@@ -104,6 +104,7 @@ func initRouter() *chi.Mux {
 					r.Patch("/", controllers.ModifyProduct)
 					r.Delete("/", controllers.DeleteProduct)
 					r.Post("/image", controllers.CreateProductImage)
+					r.Delete("/image", controllers.DeleteProductImage)
 				},
 			)
 

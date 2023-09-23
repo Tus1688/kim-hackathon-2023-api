@@ -140,3 +140,23 @@ func CreateProductImage(w http.ResponseWriter, r *http.Request) {
 
 	err = render.JSON(w, http.StatusCreated, res)
 }
+
+func DeleteProductImage(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("file")
+	if id == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	err := models.DeleteProductImage(id)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			render.HandleError([]string{"image not found"}, http.StatusNotFound, w)
+			return
+		}
+
+		render.HandleError([]string{err.Error()}, http.StatusInternalServerError, w)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}

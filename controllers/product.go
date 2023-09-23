@@ -163,3 +163,21 @@ func DeleteProductImage(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 }
+
+func GetPublicProduct(w http.ResponseWriter, r *http.Request) {
+	res, err := models.GetPublicProduct()
+	if err != nil {
+		render.HandleError([]string{err.Error()}, http.StatusInternalServerError, w)
+		return
+	}
+
+	if len(res) == 0 {
+		render.HandleError([]string{"no product found"}, http.StatusNotFound, w)
+		return
+	}
+
+	err = render.JSON(w, http.StatusOK, res)
+	if err != nil {
+		render.HandleError([]string{err.Error()}, http.StatusInternalServerError, w)
+	}
+}

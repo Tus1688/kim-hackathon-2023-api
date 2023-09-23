@@ -47,6 +47,13 @@ type CreateProductResponse struct {
 	Id string `json:"id"`
 }
 
+type ProductPublicResponse struct {
+	Id          string   `json:"id"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Images      []string `json:"images"`
+}
+
 func (c *CreateProduct) Create() (CreateProductResponse, error) {
 	if c.Price <= 0 {
 		return CreateProductResponse{}, fmt.Errorf("invalid input")
@@ -225,4 +232,33 @@ func DeleteProductImage(filename string) error {
 		return err
 	}
 	return nil
+}
+
+func GetPublicProduct() ([]ProductPublicResponse, error) {
+	rows, err := database.MysqlInstance.Query(
+		`
+		SELECT BIN_TO_UUID(p.id), p.name, p.description, COALESCE(GROUP_CONCAT(pi.file_name),'') AS images
+		FROM products p
+		LEFT JOIN product_images pi ON pi.product_refer = p.id
+		GROUP BY p.id
+	`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var res []ProductPublicResponse
+	for rows.Next() {
+		var temp ProductPublicResponse
+		var images string
+		err := rows.Scan(
+			&temp.Id, &temp.Name, &temp.Description, &images,
+		)
+		if err != nil {
+			return nil, err
+		}
+		temp.Images = strings.Split(images, ",")
+		res = append(res, temp)
+	}
+	return res, nil
 }

@@ -163,6 +163,7 @@ func initRouter() *chi.Mux {
 					)
 				},
 			)
+			r.Get("/public/product", controllers.GetPublicProduct)
 
 			r.Post("/webhook/midtrans", midtrans.HandleNotifications)
 		},

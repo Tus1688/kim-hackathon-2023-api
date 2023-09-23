@@ -1,13 +1,16 @@
 package middlewares
 
 import (
+	"context"
 	"net/http"
 	"time"
 
 	"github.com/Tus1688/kim-hackathon-2023-api/authutil"
 )
 
-func EnforceAuthentication(requiredRoles []string, expiredIn int) func(next http.Handler) http.Handler {
+func EnforceAuthentication(
+	requiredRoles []string, expiredIn int, passUserId bool,
+) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			access, err := r.Cookie("access")
@@ -25,12 +28,23 @@ func EnforceAuthentication(requiredRoles []string, expiredIn int) func(next http
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-			//	check if the user has the required role
-			if len(requiredRoles) > 0 {
-				if !verifyRoles(requiredRoles, claim.Roles) {
-					w.WriteHeader(http.StatusForbidden)
-					return
+			if len(requiredRoles) == 0 {
+				if passUserId {
+					ctx := context.WithValue(r.Context(), "uid", claim.Uid)
+					r = r.WithContext(ctx)
 				}
+				next.ServeHTTP(w, r)
+				return
+			}
+			//	check if the user has the required role
+			if !verifyRoles(requiredRoles, claim.Roles) {
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+
+			if passUserId {
+				ctx := context.WithValue(r.Context(), "uid", claim.Uid)
+				r = r.WithContext(ctx)
 			}
 			next.ServeHTTP(w, r)
 		}

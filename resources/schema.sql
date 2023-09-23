@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(32) NOT NULL UNIQUE,
     hashed_password BINARY(60) NOT NULL,
     is_admin BOOL DEFAULT FALSE,
+    is_user BOOL DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -65,4 +66,43 @@ CREATE TABLE IF NOT EXISTS orders(
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (product_refer) REFERENCES products(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS lending(
+    id BINARY(16) PRIMARY KEY DEFAULT (UUID_TO_BIN(UUID())),
+    user_refer BINARY(16) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    interest_rate INT NOT NULL,
+    tenor INT NOT NULL,
+    -- ml params
+    age INT NOT NULL,
+    # 0 = male
+    gender bool DEFAULT FALSE,
+    income DECIMAL(10,2) NOT NULL,
+    last_education VARCHAR(255) NULL,
+    marital_status BOOL DEFAULT FALSE,
+    number_of_children INT NOT NULL,
+    home_ownership BOOL DEFAULT FALSE,
+    -- ml params
+    kk_url VARCHAR(255) NULL,
+    ktp_url VARCHAR(255) NULL,
+    is_approved BOOL DEFAULT FALSE,
+    status VARCHAR(32) NOT NULL,
+    payment_token VARCHAR(255) NULL,
+    payment_url VARCHAR(255) NULL,
+    is_paid BOOL DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS bill(
+    id BINARY(16) PRIMARY KEY DEFAULT (UUID_TO_BIN(UUID())),
+    user_refer BINARY(16) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    is_paid BOOL DEFAULT FALSE,
+    status VARCHAR(32) NOT NULL,
+    payment_token VARCHAR(255) NULL,
+    payment_url VARCHAR(255) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );

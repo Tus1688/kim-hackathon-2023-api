@@ -20,12 +20,14 @@ type LoginRequest struct {
 type LoginResponse struct {
 	Username string `json:"username"`
 	IsAdmin  bool   `json:"is_admin"`
+	IsUser   bool   `json:"is_user"`
 }
 
 type compareUser struct {
 	id             string
 	hashedPassword string
 	isAdmin        bool
+	isUser         bool
 }
 
 type internalRefresh struct {
@@ -58,14 +60,17 @@ func (c *compareUser) SerializeRoles() []string {
 	if c.isAdmin {
 		roles = append(roles, "admin")
 	}
+	if c.isUser {
+		roles = append(roles, "user")
+	}
 	return roles
 }
 
 func (l *LoginRequest) Login() (string, string, error, LoginResponse) {
 	var row compareUser
 	err := database.MysqlInstance.QueryRow(
-		`SELECT BIN_TO_UUID(id), hashed_password, is_admin FROM users WHERE username = ?`, l.Username,
-	).Scan(&row.id, &row.hashedPassword, &row.isAdmin)
+		`SELECT BIN_TO_UUID(id), hashed_password, is_admin, is_user FROM users WHERE username = ?`, l.Username,
+	).Scan(&row.id, &row.hashedPassword, &row.isAdmin, &row.isUser)
 	if err != nil {
 		time.Sleep(55 * time.Millisecond)
 		return "", "", fmt.Errorf("invalid username or password"), LoginResponse{}
@@ -101,6 +106,7 @@ func (l *LoginRequest) Login() (string, string, error, LoginResponse) {
 	return accessToken, refreshToken, nil, LoginResponse{
 		Username: l.Username,
 		IsAdmin:  row.isAdmin,
+		IsUser:   row.isUser,
 	}
 }
 

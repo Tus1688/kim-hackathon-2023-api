@@ -73,7 +73,7 @@ func initRouter() *chi.Mux {
 					// protected routes for admin
 					r.Group(
 						func(r chi.Router) {
-							r.Use(middlewares.EnforceAuthentication([]string{"admin"}, 3))
+							r.Use(middlewares.EnforceAuthentication([]string{"admin"}, 3, false))
 
 							r.Get("/user", controllers.GetUser)
 							r.Post("/user", controllers.CreateUser)
@@ -86,7 +86,7 @@ func initRouter() *chi.Mux {
 
 			r.Route(
 				"/business", func(r chi.Router) {
-					r.Use(middlewares.EnforceAuthentication([]string{"admin"}, 3))
+					r.Use(middlewares.EnforceAuthentication([]string{"admin"}, 3, false))
 
 					r.Get("/", controllers.GetBusiness)
 					r.Post("/", controllers.CreateBusiness)
@@ -97,7 +97,7 @@ func initRouter() *chi.Mux {
 
 			r.Route(
 				"/product", func(r chi.Router) {
-					r.Use(middlewares.EnforceAuthentication([]string{"admin"}, 3))
+					r.Use(middlewares.EnforceAuthentication([]string{"admin"}, 3, false))
 
 					r.Get("/", controllers.GetProduct)
 					r.Post("/", controllers.CreateProduct)
@@ -110,11 +110,33 @@ func initRouter() *chi.Mux {
 
 			r.Route(
 				"/order", func(r chi.Router) {
-					r.Use(middlewares.EnforceAuthentication([]string{"admin"}, 3))
+					r.Use(middlewares.EnforceAuthentication([]string{"admin"}, 3, false))
 
 					r.Get("/", controllers.GetOrder)
 					r.Post("/", controllers.CreateOrder)
 					r.Patch("/", controllers.ModifyOrder)
+				},
+			)
+			r.Route(
+				"/lending", func(r chi.Router) {
+					r.Route(
+						// unprotected routes for borrower
+						"/user", func(r chi.Router) {
+							r.Post("/register", controllers.RegisterAsBorrower)
+
+							r.Group(
+								func(r chi.Router) {
+									r.Use(middlewares.EnforceAuthentication([]string{"user"}, 3, true))
+
+									r.Post("/document", controllers.UploadDocument)
+									r.Post("/proposal", controllers.CreateLendingProposal)
+
+									r.Get("/proposal", controllers.GetLendingProposalUser)
+								},
+							)
+						},
+					)
+
 				},
 			)
 		},

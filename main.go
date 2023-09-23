@@ -163,6 +163,8 @@ func initRouter() *chi.Mux {
 					)
 				},
 			)
+
+			r.Post("/webhook/midtrans", midtrans.HandleNotifications)
 		},
 	)
 

@@ -2,7 +2,9 @@ package models
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -50,6 +52,41 @@ type LendingResponse struct {
 	Status           string  `json:"status"`
 	PaymentToken     string  `json:"payment_token,omitempty"`
 	PaymentUrl       string  `json:"payment_url,omitempty"`
+}
+
+type LendingAdminResponse struct {
+	Id               string  `json:"id"`
+	UserId           string  `json:"user_id"`
+	Username         string  `json:"username"`
+	Amount           float64 `json:"amount"`
+	InterestRate     int     `json:"interest_rate"`
+	Tenor            int     `json:"tenor"`
+	Age              int     `json:"age"`
+	Gender           string  `json:"gender"`
+	Income           float64 `json:"income"`
+	LastEducation    string  `json:"last_education"`
+	MaritalStatus    string  `json:"marital_status"`
+	NumberOfChildren int     `json:"number_of_children"`
+	HasHouse         string  `json:"has_house"`
+	KkUrl            string  `json:"kk_url"`
+	KtpUrl           string  `json:"ktp_url"`
+	Status           string  `json:"status"`
+	PaymentToken     string  `json:"payment_token,omitempty"`
+	PaymentUrl       string  `json:"payment_url,omitempty"`
+}
+
+type LendingPredictRequest struct {
+	Age              int `json:"Age"`
+	Gender           int `json:"Gender"`
+	Income           int `json:"Income"`
+	Education        int `json:"Education"`
+	MaritalStatus    int `json:"Marital_Status"`
+	NumberOfChildren int `json:"Number_of_Children"`
+	HomeOwnership    int `json:"Home_Ownership"`
+}
+
+type LendingPredictResponse struct {
+	Predictions []string `json:"predictions"`
 }
 
 func (r *RegisterAsBorrower) Register() error {
@@ -182,6 +219,105 @@ func GetLendingAsUser(uid string) ([]LendingResponse, error) {
 			return nil, err
 		}
 		res = append(res, temp)
+	}
+	return res, nil
+}
+
+func GetLendingAsAdmin() ([]LendingAdminResponse, error) {
+	rows, err := database.MysqlInstance.Query(
+		`
+		SELECT BIN_TO_UUID(l.id),
+		       BIN_TO_UUID(l.user_refer),
+		       u.username,
+			   l.amount,
+			   l.interest_rate,
+			   l.tenor,
+			   l.age,
+			   CASE l.gender
+				   WHEN 0 THEN 'Laki-Laki'
+				   WHEN 1 THEN 'Perempuan'
+				   END AS GENDER,
+			   l.income,
+			   CASE l.last_education
+				   WHEN 0 THEN 'SMA'
+				   WHEN 1 THEN 'D3'
+				   WHEN 2 THEN 'S1'
+				   WHEN 3 THEN 'S2'
+				   WHEN 4 THEN 'S3'
+				   END AS last_education,
+			   CASE l.marital_status
+				   WHEN 0 THEN 'Lajang'
+				   WHEN 1 THEN 'Menikah'
+				   END AS marital_status,
+			   l.number_of_children,
+			   CASE l.home_ownership
+				   WHEN 0 THEN 'Menyewa'
+				   WHEN 1 THEN 'Memiliki'
+				   END AS home_ownership,
+				l.kk_url, l.ktp_url,
+		        l.status, COALESCE(l.payment_token, ''), COALESCE(l.payment_url, '')
+		FROM lending l
+		INNER JOIN users u ON l.user_refer = u.id
+	`,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+	var res []LendingAdminResponse
+	for rows.Next() {
+		var temp LendingAdminResponse
+		err := rows.Scan(
+			&temp.Id, &temp.UserId, &temp.Username, &temp.Amount, &temp.InterestRate, &temp.Tenor, &temp.Age,
+			&temp.Gender, &temp.Income, &temp.LastEducation, &temp.MaritalStatus, &temp.NumberOfChildren,
+			&temp.HasHouse, &temp.KkUrl, &temp.KtpUrl, &temp.Status, &temp.PaymentToken, &temp.PaymentUrl,
+		)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, temp)
+	}
+	return res, nil
+}
+
+func PredictCreditScore(id string) (LendingPredictResponse, error) {
+	var req LendingPredictRequest
+	err := database.MysqlInstance.QueryRow(
+		`
+	SELECT l.age, l.gender, FLOOR(l.income), l.last_education, l.marital_status, l.number_of_children, l.home_ownership FROM lending l
+	WHERE l.id = UUID_TO_BIN(?)
+	`, id,
+	).Scan(
+		&req.Age, &req.Gender, &req.Income, &req.Education, &req.MaritalStatus, &req.NumberOfChildren,
+		&req.HomeOwnership,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return LendingPredictResponse{}, fmt.Errorf("order id not found")
+		}
+		return LendingPredictResponse{}, err
+	}
+
+	url := flaskMLBaseUrl + "/predict"
+	body, err := json.Marshal(req)
+	if err != nil {
+		return LendingPredictResponse{}, err
+	}
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return LendingPredictResponse{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return LendingPredictResponse{}, fmt.Errorf("ml server error")
+	}
+
+	var res LendingPredictResponse
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return LendingPredictResponse{}, err
 	}
 	return res, nil
 }

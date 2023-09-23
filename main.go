@@ -34,6 +34,7 @@ func main() {
 
 	models.InitializeGoBlobBaseUrl()
 	models.InitializeGoBlobAuthorization()
+	models.InitializeFlaskMLBaseUrl()
 
 	err = database.InitAdmin()
 	if err != nil {
@@ -124,6 +125,7 @@ func initRouter() *chi.Mux {
 						"/user", func(r chi.Router) {
 							r.Post("/register", controllers.RegisterAsBorrower)
 
+							// protected route for borrower
 							r.Group(
 								func(r chi.Router) {
 									r.Use(middlewares.EnforceAuthentication([]string{"user"}, 3, true))
@@ -137,6 +139,15 @@ func initRouter() *chi.Mux {
 						},
 					)
 
+					// protected route for admin
+					r.Route(
+						"/admin", func(r chi.Router) {
+							r.Use(middlewares.EnforceAuthentication([]string{"admin"}, 3, false))
+
+							r.Get("/proposal", controllers.GetLendingProposalAdmin)
+							r.Get("/proposal-predict", controllers.PredictCreditScore)
+						},
+					)
 				},
 			)
 		},

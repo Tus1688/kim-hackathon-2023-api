@@ -87,6 +87,45 @@ func GetLendingProposalUser(w http.ResponseWriter, r *http.Request) {
 		render.HandleError([]string{err.Error()}, http.StatusInternalServerError, w)
 		return
 	}
+	if len(res) == 0 {
+		render.HandleError([]string{"no data found"}, http.StatusNotFound, w)
+		return
+	}
+
+	err = render.JSON(w, http.StatusOK, res)
+	if err != nil {
+		render.HandleError([]string{err.Error()}, http.StatusInternalServerError, w)
+	}
+}
+
+func GetLendingProposalAdmin(w http.ResponseWriter, r *http.Request) {
+	res, err := models.GetLendingAsAdmin()
+	if err != nil {
+		render.HandleError([]string{err.Error()}, http.StatusInternalServerError, w)
+		return
+	}
+	if len(res) == 0 {
+		render.HandleError([]string{"no data found"}, http.StatusNotFound, w)
+		return
+	}
+
+	err = render.JSON(w, http.StatusOK, res)
+	if err != nil {
+		render.HandleError([]string{err.Error()}, http.StatusInternalServerError, w)
+	}
+}
+
+func PredictCreditScore(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	res, err := models.PredictCreditScore(id)
+	if err != nil {
+		render.HandleError([]string{err.Error()}, http.StatusInternalServerError, w)
+		return
+	}
 
 	err = render.JSON(w, http.StatusOK, res)
 	if err != nil {

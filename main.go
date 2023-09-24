@@ -76,7 +76,8 @@ func initRouter() *chi.Mux {
 
 					r.Get("/total-user", controllers.GetTotalUser)
 					r.Get("/total-sme", controllers.GetTotalSME)
-					r.Get("/total-awaiting approval", controllers.GetAwaitingApproval)
+					r.Get("/total-awaiting", controllers.GetAwaitingApproval)
+					r.Get("/top-product", controllers.GetTopProduct)
 				},
 			)
 

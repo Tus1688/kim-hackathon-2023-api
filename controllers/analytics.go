@@ -45,3 +45,16 @@ func GetAwaitingApproval(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func GetTopProduct(w http.ResponseWriter, r *http.Request) {
+	res, err := models.GetTopProduct()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	err = render.JSON(w, http.StatusOK, res)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}

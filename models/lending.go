@@ -55,6 +55,7 @@ type LendingResponse struct {
 	Status           string  `json:"status"`
 	PaymentToken     string  `json:"payment_token,omitempty"`
 	PaymentUrl       string  `json:"payment_url,omitempty"`
+	IsPaid           bool    `json:"is_paid"`
 }
 
 type LendingAdminResponse struct {
@@ -201,7 +202,7 @@ func GetLendingAsUser(uid string) ([]LendingResponse, error) {
 				   WHEN 1 THEN 'Memiliki'
 				   END AS home_ownership,
 				l.kk_url, l.ktp_url,
-		        l.status, COALESCE(l.payment_token, ''), COALESCE(l.payment_url, '')
+		        l.status, COALESCE(l.payment_token, ''), COALESCE(l.payment_url, ''), l.is_paid
 		FROM lending l
 		WHERE l.user_refer = UUID_TO_BIN(?)
 		ORDER BY l.created_at DESC
@@ -219,7 +220,7 @@ func GetLendingAsUser(uid string) ([]LendingResponse, error) {
 			&temp.Id, &temp.Amount, &temp.InterestRate, &temp.Tenor, &temp.Age, &temp.Gender, &temp.Income,
 			&temp.LastEducation, &temp.MaritalStatus, &temp.NumberOfChildren, &temp.HasHouse, &temp.KkUrl, &temp.KtpUrl,
 			&temp.Status,
-			&temp.PaymentToken, &temp.PaymentUrl,
+			&temp.PaymentToken, &temp.PaymentUrl, &temp.IsPaid,
 		)
 		if err != nil {
 			return nil, err
